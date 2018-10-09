@@ -11,7 +11,7 @@ output:
     number_sections: true
 ---
 
-# E- and M-Steps Derivations
+# E- and M-Step Derivations
 ## E-Step Derivation
 \begin{align}
 Q(\Psi|\Psi^{(k)}) & =\sum_{Z}\left[p(Z|\mathbf{y}, X, \Psi^{(k)})\log p(\mathbf{y}, Z|X, \Psi)\right]\\
