@@ -22,7 +22,7 @@ Q(\Psi|\Psi^{(k)}) & =\sum_{Z}\left[p(Z|\mathbf{y}, X, \Psi^{(k)})\log p(\mathbf
                    & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[p(\mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|\mathbf{x}_{i}, \Psi)\right]\\
                    & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[p(z_{ij}=1|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|\mathbf{x}_{i}, \Psi)\right]\\
                    & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[E(z_{ij}|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}\right]\\
-                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}
 \end{align}
 where
 $$\mathbf{y}=(y_{1},\cdots,y_{n})'$$
@@ -83,5 +83,97 @@ with $\lambda$ a Lagrange multiplier. We can obtain
 $$\pi^{(k+1)}_{j}=\frac{\sum^{n}_{i=1}p^{(k)}_{ij}}{\sum^{m}_{j=1}\sum^{n}_{i=1}p^{(k)}_{ij}}=\frac{\sum^{n}_{i=1}p^{(k)}_{ij}}{n}\quad j=1,\cdots,m$$
 
 # A Function to Implement EM Algorithm
+
+```{r}
+regmix_em <- function(y, xmat, pi.init, beta.init, sigma.init, 
+                      control = list(maxiter = 100, tol = .Machine$double.eps^0.2)){
+  
+  xmat <- as.matrix(xmat)
+  
+  n <- nrow(xmat)
+  p <- ncol(xmat)
+  m <- length(pi.init)
+  
+  pi <- pi.init
+  beta <- beta.init
+  sigma <- sigma.init
+  
+  maxiter <- control$maxiter
+  tol <- control$tol
+  conv <- 1
+  
+  P <- matrix(NA, nrow = n, ncol = m)
+  beta.new <- matrix(NA, nrow = p, ncol = m)
+  
+  for (i in 1:maxiter) {
+    for (j in 1:n) {
+      P[j,] <- pi * dnorm(y[j] - xmat[j,] %*% beta, 0, sigma)/
+        sum(pi * dnorm(y[j] - xmat[j,] %*% beta, 0, sigma))
+    }
+    
+    pi.new <- apply(P, MARGIN = 2, mean)
+    
+    for (j in 1:m) {
+      beta.new[,j] <- solve(t(xmat) %*% diag(P[,j]) %*% xmat) %*% t(xmat) %*% diag(P[,j]) %*% y
+    }
+    
+    sigma.new <- sqrt(sum(P * (y %*% t(rep(1, m)) - xmat %*% beta.new)^2)/n)
+    
+    conv <- sum(abs(pi.new - pi)) + sum(abs(beta.new - beta)) + abs(sigma.new - sigma)
+    if(conv < tol) break
+    
+    pi <- pi.new
+    beta <- beta.new
+    sigma <- sigma.new
+    
+  }
+  
+  if(i == maxiter)
+  message("Reached the maximum iteration!")
+  
+  list(pi = pi.new, beta = beta.new, sigma = sigma.new, conv = conv, iter = i)
+  
+}
+```
+
+# Data Generation and Parameters Estimation
+After I carried out the following code, I found parameters won't be updated after the second iteration. Tracing back to E-Step Derivation, we can see if $\boldsymbol{\beta}_{1}=\cdots=\boldsymbol{\beta}_{m}$, then $\mathbf{p}^{(k)}_{\cdot j}$ and $\pi^{(k)}_{j}$ will remain the same at all times.
+```{r}
+regmix_sim <- function(n, pi, beta, sigma) {
+    K <- ncol(beta)
+    p <- NROW(beta)
+    xmat <- matrix(rnorm(n * p), n, p) # normal covaraites
+    error <- matrix(rnorm(n * K, sd = sigma), n, K)
+    ymat <- xmat %*% beta + error # n by K matrix
+    ind <- t(rmultinom(n, size = 1, prob = pi))
+    y <- rowSums(ymat * ind)
+    data.frame(y, xmat)
+}
+
+n <- 400
+pi <- c(.3, .4, .3)
+beta <- matrix(c( 1,  1,  1, 
+                -1, -1, -1), 2, 3)
+sigma <- 1
+set.seed(1205)
+dat <- regmix_sim(n, pi, beta, sigma)
+
+fit <- regmix_em(y = dat[,1], xmat = dat[,-1],
+          pi.init = pi / pi / length(pi),
+          beta.init = beta * 0,
+          sigma.init = sigma / sigma,
+          control = list(maxiter = 500, tol = 1e-5))
+fit
+```
+Thus we change the initial values of $\boldsymbol{\beta}_{1},\cdots,\boldsymbol{\beta}_{m}$. And we can see this time after $83$ iterations, the algorithm converged and I got the following consequences.
+```{r}
+fit1 <- regmix_em(y = dat[,1], xmat = dat[,-1],
+          pi.init = pi / pi / length(pi),
+          beta.init = matrix(1:6, 2, 3),
+          sigma.init = sigma / sigma,
+          control = list(maxiter = 500, tol = 1e-5))
+fit1
+```
+
 
 
