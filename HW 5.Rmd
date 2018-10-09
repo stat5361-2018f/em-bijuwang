@@ -1,0 +1,87 @@
+---
+title: "EM Algorithm for Finite Mixture Regression"
+subtitle: "HW 5 of STAT 5361 Statistical Computing"
+author: Biju Wang^[<bijuwang@uconn.edu>]
+date: "`r format(Sys.Date(), '%m/%d/%Y')`"
+header-includes: 
+  \usepackage{float}
+  \floatplacement{figure}{H}
+output: 
+  pdf_document:
+    number_sections: true
+---
+
+# E- and M-Steps Derivations
+## E-Step Derivation
+\begin{align}
+Q(\Psi|\Psi^{(k)}) & =\sum_{Z}\left[p(Z|\mathbf{y}, X, \Psi^{(k)})\log p(\mathbf{y}, Z|X, \Psi)\right]\\
+                   & =\sum_{Z}\left[p(Z|\mathbf{y}, X, \Psi^{(k)})\log\prod^{n}_{i=1}p(y_{i}, \mathbf{z}_{i}|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum_{Z}\left[p(Z|\mathbf{y}, X, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum_{\mathbf{z}_{i}}\left[p(\mathbf{z}_{i}|\mathbf{y}, X, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum_{\mathbf{z}_{i}}\left[p(\mathbf{z}_{i}|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[p(\mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[p(z_{ij}=1|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\log p(y_{i}, \mathbf{z}_{i}=(0,\cdots,1,\cdots,0)'|\mathbf{x}_{i}, \Psi)\right]\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}\left[E(z_{ij}|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}\right]\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}\\
+\end{align}
+where
+$$\mathbf{y}=(y_{1},\cdots,y_{n})'$$
+$$Z=
+\begin{pmatrix}
+\mathbf{z}_{1}'\\
+\vdots\\
+\mathbf{z}_{n}'
+\end{pmatrix}=
+\begin{pmatrix}
+z_{11} & z_{12} & \cdots & z_{1m}\\
+\vdots & \vdots & \vdots & \vdots\\
+z_{n1} & z_{n2} & \cdots & z_{nm}\\
+\end{pmatrix}
+\quad
+X=
+\begin{pmatrix}
+\mathbf{x}_{1}'\\
+\vdots\\
+\mathbf{x}_{n}'
+\end{pmatrix}=
+\begin{pmatrix}
+x_{11} & x_{12} & \cdots & x_{1p}\\
+\vdots & \vdots & \vdots & \vdots\\
+x_{n1} & x_{n2} & \cdots & x_{np}\\
+\end{pmatrix}$$
+$$p^{(k)}_{ij}=E(z_{ij}|y_{i}, \mathbf{x}_{i}, \Psi^{(k)})=\frac{\pi^{(k)}_{j}\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}^{(k)}_{j}, 0, \sigma^{2^{(k)}})}{\sum^{m}_{j=1}\pi^{(k)}_{j}\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}^{(k)}_{j}, 0, \sigma^{2^{(k)}})}$$
+The elaboration of the above steps are
+\begin{itemize}
+\item Step1$\rightarrow$Step2: Use independence among $(y_{i}, \mathbf{z}_{i})$
+\item Step3$\rightarrow$Step4: Marginal density of $\mathbf{z}_{i}$
+\item Step4$\rightarrow$Step5: Use the fact $\mathbf{z}_{i}\perp(y_{1},\cdots,y_{i-1},y_{i+1},\cdots,y_{n})|y_{i}$, we can get rid of $(y_{1},\cdots,y_{i-1},y_{i+1},\cdots,y_{n})$
+\item Step6$\rightarrow$Step7: Easy to see conditional joint density is equal to condition marginal density
+\end{itemize}
+## M-Step Derivation
+Since we have 
+\begin{align*}
+Q(\Psi|\Psi^{(k)}) & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\{\log\pi_{j}+\log\varphi(y_{i}-\mathbf{x}^{T}_{i}\boldsymbol{\beta}_{j}, 0, \sigma^{2})\}\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\pi_{j}-\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\sqrt{2\pi}\sigma-\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\frac{(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}_{j})^{2}}{2\sigma^{2}}\\
+                   & =\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\frac{\pi_{j}}{\sqrt{2\pi}}-\frac{1}{2}\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\sigma^{2}-\frac{1}{2}\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\frac{(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}_{j})^{2}}{\sigma^{2}}\\
+                   & =I_{1}-\frac{1}{2}I_{2}-\frac{1}{2}I_{3}
+\end{align*}
+From the above, we can see only $I_{3}$ contains $\boldsymbol{\beta}_{j}$ and 
+$$I_{3}=\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\frac{(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}_{j})^{2}}{\sigma^{2}}=\sum^{m}_{j=1}\sum^{n}_{i=1}p^{(k)}_{ij}\frac{(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}_{j})^{2}}{\sigma^{2}}$$
+To minimize $I_{3}$, we only need to fix $j$ and optimize with regard to $\boldsymbol{\beta}_{j}$. We can directly use the formula from generazied least square method and obtain 
+$$\boldsymbol{\beta}_{j}^{(k+1)}=(X'V^{-1}X)^{-1}X'V^{-1}\mathbf{y}=\left(\sum^{n}_{i=1}\mathbf{x}_{i}\mathbf{x}^{T}_{i}p^{(k)}_{ij}\right)^{-1}\left(\sum^{n}_{i=1}\mathbf{x}_{i}p^{(k)}_{ij}y_{i}\right)\quad j=1,\cdots, m$$
+where 
+$$V^{-1}=diag(p_{1j}^{(k)},\cdots, p_{nj}^{(k)})$$
+Only $I_{2}$ and $I_{3}$ contains $\sigma^{2}$, since
+$$I_{2}+I_{3}=\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\sigma^{2}+\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\frac{(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}_{j})^{2}}{\sigma^{2}}$$
+We minimize it with regard to $\sigma^{2}$ given $\boldsymbol{\beta}_{j}=\boldsymbol{\beta}^{(k+1)}_{j}$ and obtain
+$$\sigma^{2^{(k+1)}}=\frac{\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}^{(k+1)}_{j})^{2}}{\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}}=\frac{\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}(y_{i}-\mathbf{x}_{i}^{T}\boldsymbol{\beta}^{(k+1)}_{j})^{2}}{n}$$
+Only $I_{1}$ contains $\pi_{j}$ and
+$$I_{1}=\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}\log\frac{\pi_{j}}{\sqrt{2\pi}}=-\frac{1}{2}\log(2\pi)\sum^{n}_{i=1}\sum^{m}_{j=1}p^{(k)}_{ij}+\sum^{m}_{j=1}\left(\sum^{n}_{i=1}p^{(k)}_{ij}\right)\log\pi_{j}$$
+In order to maximize $I_{1}$ under constraint $\pi_{1}+\cdots\pi_{m}=1$. We use Lagrange multiplier method
+$$L(\pi_{1},\cdots,\pi_{m})=\sum^{m}_{j=1}\left(\sum^{n}_{i=1}p^{(k)}_{ij}\right)\log\pi_{j}-\lambda\left(\sum^{m}_{j=1}\pi_{j}-1\right)$$
+with $\lambda$ a Lagrange multiplier. We can obtain
+$$\pi^{(k+1)}_{j}=\frac{\sum^{n}_{i=1}p^{(k)}_{ij}}{\sum^{m}_{j=1}\sum^{n}_{i=1}p^{(k)}_{ij}}=\frac{\sum^{n}_{i=1}p^{(k)}_{ij}}{n}\quad j=1,\cdots,m$$
+
+# A Function to Implement EM Algorithm
+
+
